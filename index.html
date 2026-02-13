@@ -21,7 +21,7 @@
         margin: 0;
         background: #111; /* スマホの余白部分は暗く */
         font-family: var(--font-ui);
-        color: var(--text-main);
+        color: #fff;
         overflow: hidden; /* 画面全体のスクロールを防ぐ */
         /* テキスト選択を防いでアプリっぽく */
         user-select: none;
@@ -43,7 +43,7 @@
 
       /* ステージ（背景画像部分） - 残りの高さをすべて埋める */
       .stage {
-        flex: 1;
+        flex: 0 0 auto;
         min-height: 0;
         position: relative;
         overflow: hidden;
@@ -56,10 +56,11 @@
       .stage-bg {
         position: absolute;
         inset: 0;
-        background-size: cover;
-        background-position: center;
-        transition: filter 0.5s ease, transform 10s linear;
-        background-color: #eee;
+        background-size: contain;
+        background-position: top center;
+        background-repeat: no-repeat;
+        transition: transform 10s linear;
+        background-color: #111;
       }
 
       /* 背景に微妙なズームアニメーション */
@@ -67,90 +68,52 @@
         transform: scale(1.05);
       }
 
-      .stage-overlay {
-        position: absolute;
-        inset: 0;
-        background: linear-gradient(180deg, transparent 60%, rgba(255,255,255,0.95) 100%);
-        pointer-events: none;
-      }
-
-      /* HUD（上部UI） */
-      .hud-top {
-        position: absolute;
-        top: 20px;
-        left: 20px;
-        right: 20px;
-        z-index: 50;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-      }
-
-      /* 好感度ゲージ */
-      .affection-bar {
-        display: flex;
-        gap: 4px;
-        background: rgba(255, 255, 255, 0.5);
-        padding: 8px 12px;
-        border-radius: 20px;
-        backdrop-filter: blur(4px);
-      }
-
-      .bar-segment {
-        width: 16px;
-        height: 4px;
-        background: rgba(0,0,0,0.1);
-        border-radius: 2px;
-        transition: all 0.5s ease;
-      }
-
-      .bar-segment.active {
-        background: var(--accent-pink);
-        box-shadow: 0 0 8px rgba(255, 133, 162, 0.6);
-      }
-
       .bgm-btn {
+        position: absolute;
+        right: 16px;
+        bottom: 16px;
+        z-index: 120;
         width: 44px;
         height: 44px;
         border-radius: 50%;
-        background: var(--glass-white);
-        backdrop-filter: blur(8px);
-        border: 1px solid var(--glass-border);
+        background: rgba(255, 255, 255, 0.1);
+        border: none;
+        color: rgba(255, 255, 255, 0.4);
         display: flex;
         align-items: center;
         justify-content: center;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        box-shadow: none;
         cursor: pointer;
       }
 
       /* メッセージボックス */
       .novel-box {
-        height: 32vh; /* スマホ画面の約1/3をテキストエリアに */
-        min-height: 180px;
+        min-height: 160px;
         flex-shrink: 0;
-        padding: 24px 20px;
-        background: white;
+        flex: 1;
+        padding: 16px 20px;
+        background: rgba(176, 96, 24, 0.26);
+        backdrop-filter: blur(10px);
+        border-top: 1px solid rgba(255, 220, 170, 0.22);
         position: relative;
         z-index: 10;
         display: flex;
         flex-direction: column;
       }
 
-      .speaker {
-        font-weight: 700;
-        font-size: 0.95rem;
-        color: var(--accent-pink);
-        margin-bottom: 12px;
-        letter-spacing: 0.05em;
-      }
-
       .text-content {
         font-family: var(--font-story);
         font-size: 1.1rem;
         line-height: 1.8;
-        color: #333;
+        color: #fff;
         word-break: break-all;
         flex: 1;
+        min-width: 0;
+        padding: 16px 14px;
+        background: rgba(135, 74, 18, 0.24);
+        border: 1px solid rgba(255, 228, 190, 0.24);
+        border-radius: 12px;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.16);
         overflow-y: auto; /* 万が一溢れたらスクロール可能に */
       }
 
@@ -158,7 +121,7 @@
       .text-caret {
         display: inline-block;
         margin-left: 8px;
-        color: var(--accent-pink);
+        color: #fff;
         font-size: 0.8em;
         vertical-align: middle;
         animation: blink 1.2s infinite;
@@ -172,7 +135,7 @@
       /* 選択肢（画像の上に表示されるように） */
       .choices-container {
         position: relative;
-        padding: 0 20px 16px 20px;
+        padding: 0 76px 16px 20px;
         display: flex;
         flex-direction: column;
         gap: 12px;
@@ -180,15 +143,15 @@
       }
 
       .choice-btn {
-        background: var(--glass-white);
+        background: rgba(0, 0, 0, 0.22);
         backdrop-filter: blur(12px);
-        border: 1px solid var(--glass-border);
+        border: 1px solid rgba(255, 255, 255, 0.24);
         padding: 16px 20px;
         border-radius: 14px;
         text-align: left;
         font-size: 0.95rem;
-        color: #2c3e50;
-        box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+        color: #fff;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.2);
         transition: all 0.2s ease;
         animation: slideIn 0.4s ease forwards;
         cursor: pointer;
@@ -196,7 +159,7 @@
 
       .choice-btn:active {
         transform: scale(0.98);
-        background: #fff;
+        background: rgba(0, 0, 0, 0.3);
       }
 
       @keyframes slideIn {
@@ -212,17 +175,12 @@
       <!-- ステージエリア（画像表示・選択肢） -->
       <section class="stage" id="stage">
         <div id="bg-img" class="stage-bg"></div>
-        <div class="stage-overlay"></div>
         
-        <div class="hud-top">
-          <!-- 好感度ゲージを左上に配置 -->
-          <div class="affection-bar" id="affection-bar"></div>
-          <!-- BGMトグル -->
-          <button id="bgm-toggle" class="bgm-btn" title="BGM">
-            <svg id="music-on" class="w-5 h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"></path></svg>
-            <svg id="music-off" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"></path></svg>
-          </button>
-        </div>
+        <!-- BGMトグル（画像欄の右下） -->
+        <button id="bgm-toggle" class="bgm-btn" title="BGM">
+          <svg id="music-on" class="w-5 h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"></path></svg>
+          <svg id="music-off" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"></path></svg>
+        </button>
 
         <!-- 選択肢（画像領域の下部に表示） -->
         <div class="choices-container" id="choices"></div>
@@ -230,21 +188,21 @@
 
       <!-- テキストエリア -->
       <section class="novel-box">
-        <div class="speaker" id="speaker">主人公</div>
         <div class="text-content" id="text"></div>
       </section>
     </main>
 
     <script>
       const ENDING_THRESHOLD = 7;
-      const AFFECTION_MAX = 11;
+      const IMAGE_ASPECT_RATIO = 1080 / 719;
+      const MIN_TEXT_HEIGHT = 160;
       const IMAGE_DIR = "assets/images/";
       const BGM_PATH = "assets/audio/bgm.mp3";
 
       const scenes = [
         {
           id: "s01",
-          speaker: "主人公",
+          speaker: "あなた",
           text: "始業式の朝、昇降口でほどけた靴紐と格闘していたら、葵が何も言わずにしゃがみ込んだ。彼女の指先は驚くほど器用で、結び目を整え終えると『今年も同じクラスだね』と笑う。その一言だけで、まだ冷たい校舎の空気に春の匂いが混ざった気がした。",
           bg: "school-morning"
         },
@@ -270,7 +228,7 @@
         },
         {
           id: "s03",
-          speaker: "主人公",
+          speaker: "あなた",
           text: "昼休み、窓際で開いた葵の進路ノートは、将来の予定や目標で隙間なく埋まっていた。ただ『卒業までに言いたいこと』の欄だけが、雪みたいに白いまま残っている。書けないんじゃない。書いた瞬間に、何かが始まってしまうのを怖がっているんだと僕には見えた。",
           bg: "classroom-day"
         },
@@ -296,7 +254,7 @@
         },
         {
           id: "s05",
-          speaker: "主人公",
+          speaker: "あなた",
           text: "放課後の商店街は文化祭前で騒がしく、袋を提げた生徒が行き交っていた。必要な買い物はもう終わっているのに、葵は同じメモを何度も確認する。たぶん確かめたいのは品目じゃない。まだ言葉にならない気持ちの順番なのだと、隣を歩く僕には分かった。",
           bg: "shopping-street"
         },
@@ -322,7 +280,7 @@
         },
         {
           id: "s07",
-          speaker: "主人公",
+          speaker: "あなた",
           text: "帰り道の川沿い、夕焼けが水面を銅色に染めるころ、葵は不意に足を止めた。自転車のベルだけが遠くで鳴って、僕らの間には沈黙だけが残る。彼女は制服の袖を握り、意を決したように僕を見上げた。",
           bg: "river-evening"
         },
@@ -348,7 +306,7 @@
         },
         {
           id: "s09",
-          speaker: "主人公",
+          speaker: "あなた",
           text: "文化祭当日、屋上は紙飾りと風でざわついていた。突風にあおられて葵の進路ノートが宙を舞い、僕らは同時に駆け出して手すり際でつかみ取る。息を切らした葵は笑いながら、『危なかった、言えないまま飛んでいくところだった』と小さく呟いた。",
           bg: "school-roof"
         },
@@ -374,7 +332,7 @@
         },
         {
           id: "s11",
-          speaker: "主人公",
+          speaker: "あなた",
           text: "夜の校庭にライトが灯り、祭りの歓声は風に混じって遠のいていく。最後の一文字を書き終えた葵は、ノートを胸に抱いたまま目を閉じた。僕は何も言わず、その沈黙が終わるのを待った。やがて彼女は、覚悟を置くようにペンを机へ戻した。",
           bg: "festival-night"
         },
@@ -420,7 +378,7 @@
         },
         {
           id: "s14",
-          speaker: "主人公",
+          speaker: "あなた",
           text: "告白のあと、葵は泣きそうな顔のまま笑った。風に乱れた髪を耳へかける指先は震えていたけれど、その目にはもう迷いがない。言えなかった言葉の結び目がほどけた今、夜風の冷たさより、交わした声の温度だけが僕の中にはっきり残っていた。",
           bg: "festival-night"
         }
@@ -453,11 +411,10 @@
 
       const el = {
         app: document.getElementById("app"),
+        stage: document.getElementById("stage"),
         bgImg: document.getElementById("bg-img"),
-        speaker: document.getElementById("speaker"),
         text: document.getElementById("text"),
         choices: document.getElementById("choices"),
-        affectionBar: document.getElementById("affection-bar"),
         bgmToggle: document.getElementById("bgm-toggle"),
         musicOn: document.getElementById("music-on"),
         musicOff: document.getElementById("music-off")
@@ -476,17 +433,6 @@
       const caretEl = document.createElement("span");
       caretEl.className = "text-caret";
       caretEl.innerHTML = "▼";
-
-      function updateAffectionUI() {
-        const segments = 6;
-        const activeCount = Math.min(segments, Math.floor((state.affection / AFFECTION_MAX) * segments) + 1);
-        el.affectionBar.innerHTML = "";
-        for (let i = 0; i < segments; i++) {
-          const div = document.createElement("div");
-          div.className = `bar-segment ${i < activeCount ? 'active' : ''}`;
-          el.affectionBar.appendChild(div);
-        }
-      }
 
       function finishTyping(element) {
         if (typingTimer) {
@@ -521,30 +467,35 @@
         }, speed);
       }
 
+      function updateStageLayout() {
+        const appWidth = el.app.clientWidth;
+        const appHeight = el.app.clientHeight;
+        const idealImageHeight = appWidth * IMAGE_ASPECT_RATIO;
+        const maxImageHeight = Math.max(0, appHeight - MIN_TEXT_HEIGHT);
+        const stageHeight = Math.max(0, Math.min(idealImageHeight, maxImageHeight));
+        el.stage.style.height = `${stageHeight}px`;
+      }
+
       function render() {
         if (state.index >= scenes.length) {
           const endingKey = state.affection >= ENDING_THRESHOLD ? "true" : "normal";
           const end = endingScenes[endingKey];
-          el.speaker.textContent = end.speaker;
           typeWriter(end.text, el.text);
-          el.bgImg.style.backgroundImage = `url('${IMAGE_DIR}${end.id}.jpg')`;
+          el.bgImg.style.backgroundImage = `url('${IMAGE_DIR}${end.id}.jpeg')`;
           el.choices.innerHTML = "";
           state.ended = true;
           return;
         }
 
         if (state.pendingReaction) {
-          el.speaker.textContent = state.pendingReaction.speaker;
           typeWriter(state.pendingReaction.text, el.text);
           el.choices.innerHTML = "";
           return;
         }
 
         const scene = scenes[state.index];
-        el.bgImg.style.backgroundImage = `url('${IMAGE_DIR}${scene.id}.jpg')`;
-        el.speaker.textContent = scene.speaker;
+        el.bgImg.style.backgroundImage = `url('${IMAGE_DIR}${scene.id}.jpeg')`;
         typeWriter(scene.text, el.text);
-        updateAffectionUI();
 
         if (scene.choices) {
           el.choices.innerHTML = "";
@@ -556,7 +507,7 @@
               e.stopPropagation(); // 画面タップイベントを防止
               handleUserInteraction();
               state.affection += c.affection;
-              state.pendingReaction = { speaker: "地の文", text: c.reaction };
+              state.pendingReaction = { text: c.reaction };
               state.pendingNextId = c.next;
               render();
             };
@@ -623,9 +574,12 @@
 
       // 初期起動
       window.onload = () => {
+        updateStageLayout();
         render();
-        document.getElementById("stage").classList.add("active");
+        el.stage.classList.add("active");
       };
+
+      window.addEventListener("resize", updateStageLayout);
     </script>
   </body>
 </html>
