@@ -122,7 +122,7 @@
           inset 0 1px 0 rgba(255, 255, 255, 0.28),
           inset 0 -1px 0 rgba(255, 255, 255, 0.08),
           0 12px 28px rgba(0, 0, 0, 0.22);
-        overflow-y: auto; /* 万が一溢れたらスクロール可能に */
+        overflow-y: hidden; /* ページ送り表示にするためスクロールは使わない */
       }
 
       .text-content.with-choices {
@@ -258,6 +258,8 @@
       const ENDING_THRESHOLD = 7;
       const IMAGE_ASPECT_RATIO = 1080 / 719;
       const MIN_TEXT_HEIGHT = 160;
+      const TEXT_PAGE_CHARS_MOBILE = 56;
+      const TEXT_PAGE_CHARS_DEFAULT = 72;
       const IMAGE_DIR = "assets/images/";
       const BGM_PATH = "assets/audio/bgm.mp3";
 
@@ -468,6 +470,11 @@
         pendingReaction: null,
         pendingNextId: null,
         choiceMenuOpen: false,
+        textFlow: {
+          key: null,
+          pages: [],
+          page: 0
+        },
         bgmEnabled: true,
         bgmStarted: false
       };
@@ -510,10 +517,12 @@
         element.textContent = currentFullText;
         isTyping = false;
         
-        // 選択肢がない場合のみ、次へ進めるマークを表示
+        // 次ページがある場合はページ送りマーク、なければ通常の進行マークを表示
         const scene = scenes[state.index];
         const hasChoices = scene && scene.choices && !state.pendingReaction;
-        if (hasChoices && !state.choiceMenuOpen) {
+        if (hasNextTextPage()) {
+          element.appendChild(caretEl);
+        } else if (hasChoices && !state.choiceMenuOpen) {
           element.appendChild(choiceToggleEl);
         } else if (!hasChoices && !state.ended) {
           element.appendChild(caretEl);
@@ -535,6 +544,63 @@
             finishTyping(element);
           }
         }, speed);
+      }
+
+      function getPageCharLimit() {
+        return window.innerWidth <= 390 ? TEXT_PAGE_CHARS_MOBILE : TEXT_PAGE_CHARS_DEFAULT;
+      }
+
+      function paginateText(text) {
+        const limit = getPageCharLimit();
+        const normalized = (text || "").trim();
+        if (!normalized) return [""];
+
+        const units = normalized.split(/(?<=[。！？!?])/).map((s) => s.trim()).filter(Boolean);
+        const pages = [];
+        let current = "";
+
+        for (const unit of units) {
+          if (!current) {
+            current = unit;
+            continue;
+          }
+          if ((current + unit).length <= limit) {
+            current += unit;
+          } else {
+            pages.push(current);
+            current = unit;
+          }
+        }
+        if (current) pages.push(current);
+
+        if (pages.length === 1 && pages[0].length > limit) {
+          const hardPages = [];
+          for (let i = 0; i < pages[0].length; i += limit) {
+            hardPages.push(pages[0].slice(i, i + limit));
+          }
+          return hardPages;
+        }
+
+        return pages;
+      }
+
+      function setPagedText(key, text) {
+        if (state.textFlow.key !== key) {
+          state.textFlow.key = key;
+          state.textFlow.pages = paginateText(text);
+          state.textFlow.page = 0;
+        }
+        typeWriter(state.textFlow.pages[state.textFlow.page] || "", el.text);
+      }
+
+      function hasNextTextPage() {
+        return state.textFlow.page < state.textFlow.pages.length - 1;
+      }
+
+      function advanceTextPage() {
+        if (!hasNextTextPage()) return;
+        state.textFlow.page += 1;
+        typeWriter(state.textFlow.pages[state.textFlow.page] || "", el.text);
       }
 
       function updateStageLayout() {
@@ -563,7 +629,7 @@
         if (state.index >= scenes.length) {
           const endingKey = state.affection >= ENDING_THRESHOLD ? "true" : "normal";
           const end = endingScenes[endingKey];
-          typeWriter(end.text, el.text);
+          setPagedText(`ending:${endingKey}`, end.text);
           el.bgImg.style.backgroundImage = `url('${IMAGE_DIR}${end.id}.jpeg')`;
           el.choices.innerHTML = "";
           el.text.classList.remove("with-choices");
@@ -574,7 +640,7 @@
         }
 
         if (state.pendingReaction) {
-          typeWriter(state.pendingReaction.text, el.text);
+          setPagedText(`reaction:${state.index}:${state.pendingNextId}`, state.pendingReaction.text);
           el.choices.innerHTML = "";
           el.text.classList.remove("with-choices");
           el.text.classList.remove("choices-only");
@@ -614,14 +680,14 @@
           } else {
             el.text.classList.remove("choices-only");
             el.choiceReturn.classList.add("hidden");
-            typeWriter(scene.text, el.text);
+            setPagedText(`scene:${scene.id}`, scene.text);
           }
         } else {
           el.text.classList.remove("with-choices");
           el.text.classList.remove("choices-only");
           el.choices.innerHTML = "";
           el.choiceReturn.classList.add("hidden");
-          typeWriter(scene.text, el.text);
+          setPagedText(`scene:${scene.id}`, scene.text);
         }
       }
 
@@ -640,6 +706,11 @@
         // タイプ中ならスキップして全表示
         if (isTyping) {
           finishTyping(el.text);
+          return;
+        }
+
+        if (hasNextTextPage()) {
+          advanceTextPage();
           return;
         }
 
@@ -696,7 +767,11 @@
         el.stage.classList.add("active");
       };
 
-      window.addEventListener("resize", updateStageLayout);
+      window.addEventListener("resize", () => {
+        updateStageLayout();
+        state.textFlow.key = null;
+        render();
+      });
     </script>
   </body>
 </html>
