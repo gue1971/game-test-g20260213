@@ -1,6 +1,6 @@
 {
   "name": "恋愛シミュレーションゲームのテスト",
-  "short_name": "test",
+  "short_name": "恋愛シム",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#222222",
