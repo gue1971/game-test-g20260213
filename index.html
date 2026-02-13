@@ -1,0 +1,631 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1.0, user-scalable=no" />
+    <title>青春ノート - ブラウザ恋愛シミュレーション</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&family=Noto+Serif+JP:wght@500;700&display=swap');
+
+      :root {
+        --glass-white: rgba(255, 255, 255, 0.75);
+        --glass-border: rgba(255, 255, 255, 0.4);
+        --text-main: #2c3e50;
+        --accent-pink: #ff85a2;
+        --font-ui: "Noto Sans JP", sans-serif;
+        --font-story: "Noto Serif JP", serif;
+      }
+
+      body {
+        margin: 0;
+        background: #111; /* スマホの余白部分は暗く */
+        font-family: var(--font-ui);
+        color: var(--text-main);
+        overflow: hidden; /* 画面全体のスクロールを防ぐ */
+        /* テキスト選択を防いでアプリっぽく */
+        user-select: none;
+        -webkit-user-select: none;
+      }
+
+      /* 画面全体のコンテナ（スマホの画面にぴったり収める） */
+      .app {
+        max-width: 480px;
+        margin: 0 auto;
+        height: 100dvh;
+        background: white;
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0 0 40px rgba(0,0,0,0.5);
+        cursor: pointer;
+      }
+
+      /* ステージ（背景画像部分） - 残りの高さをすべて埋める */
+      .stage {
+        flex: 1;
+        min-height: 0;
+        position: relative;
+        overflow: hidden;
+        background: #eee;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end; /* 選択肢を下揃えにするため */
+      }
+
+      .stage-bg {
+        position: absolute;
+        inset: 0;
+        background-size: cover;
+        background-position: center;
+        transition: filter 0.5s ease, transform 10s linear;
+        background-color: #eee;
+      }
+
+      /* 背景に微妙なズームアニメーション */
+      .stage.active .stage-bg {
+        transform: scale(1.05);
+      }
+
+      .stage-overlay {
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(180deg, transparent 60%, rgba(255,255,255,0.95) 100%);
+        pointer-events: none;
+      }
+
+      /* HUD（上部UI） */
+      .hud-top {
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        right: 20px;
+        z-index: 50;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      /* 好感度ゲージ */
+      .affection-bar {
+        display: flex;
+        gap: 4px;
+        background: rgba(255, 255, 255, 0.5);
+        padding: 8px 12px;
+        border-radius: 20px;
+        backdrop-filter: blur(4px);
+      }
+
+      .bar-segment {
+        width: 16px;
+        height: 4px;
+        background: rgba(0,0,0,0.1);
+        border-radius: 2px;
+        transition: all 0.5s ease;
+      }
+
+      .bar-segment.active {
+        background: var(--accent-pink);
+        box-shadow: 0 0 8px rgba(255, 133, 162, 0.6);
+      }
+
+      .bgm-btn {
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        background: var(--glass-white);
+        backdrop-filter: blur(8px);
+        border: 1px solid var(--glass-border);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        cursor: pointer;
+      }
+
+      /* メッセージボックス */
+      .novel-box {
+        height: 32vh; /* スマホ画面の約1/3をテキストエリアに */
+        min-height: 180px;
+        flex-shrink: 0;
+        padding: 24px 20px;
+        background: white;
+        position: relative;
+        z-index: 10;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .speaker {
+        font-weight: 700;
+        font-size: 0.95rem;
+        color: var(--accent-pink);
+        margin-bottom: 12px;
+        letter-spacing: 0.05em;
+      }
+
+      .text-content {
+        font-family: var(--font-story);
+        font-size: 1.1rem;
+        line-height: 1.8;
+        color: #333;
+        word-break: break-all;
+        flex: 1;
+        overflow-y: auto; /* 万が一溢れたらスクロール可能に */
+      }
+
+      /* タップを促すアイコン（テキスト末尾） */
+      .text-caret {
+        display: inline-block;
+        margin-left: 8px;
+        color: var(--accent-pink);
+        font-size: 0.8em;
+        vertical-align: middle;
+        animation: blink 1.2s infinite;
+      }
+
+      @keyframes blink {
+        0%, 100% { opacity: 0; }
+        50% { opacity: 1; }
+      }
+
+      /* 選択肢（画像の上に表示されるように） */
+      .choices-container {
+        position: relative;
+        padding: 0 20px 16px 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        z-index: 100;
+      }
+
+      .choice-btn {
+        background: var(--glass-white);
+        backdrop-filter: blur(12px);
+        border: 1px solid var(--glass-border);
+        padding: 16px 20px;
+        border-radius: 14px;
+        text-align: left;
+        font-size: 0.95rem;
+        color: #2c3e50;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+        transition: all 0.2s ease;
+        animation: slideIn 0.4s ease forwards;
+        cursor: pointer;
+      }
+
+      .choice-btn:active {
+        transform: scale(0.98);
+        background: #fff;
+      }
+
+      @keyframes slideIn {
+        from { opacity: 0; transform: translateY(15px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- アプリ全体をタップ領域として扱う -->
+    <main class="app" id="app">
+      
+      <!-- ステージエリア（画像表示・選択肢） -->
+      <section class="stage" id="stage">
+        <div id="bg-img" class="stage-bg"></div>
+        <div class="stage-overlay"></div>
+        
+        <div class="hud-top">
+          <!-- 好感度ゲージを左上に配置 -->
+          <div class="affection-bar" id="affection-bar"></div>
+          <!-- BGMトグル -->
+          <button id="bgm-toggle" class="bgm-btn" title="BGM">
+            <svg id="music-on" class="w-5 h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"></path></svg>
+            <svg id="music-off" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"></path></svg>
+          </button>
+        </div>
+
+        <!-- 選択肢（画像領域の下部に表示） -->
+        <div class="choices-container" id="choices"></div>
+      </section>
+
+      <!-- テキストエリア -->
+      <section class="novel-box">
+        <div class="speaker" id="speaker">主人公</div>
+        <div class="text-content" id="text"></div>
+      </section>
+    </main>
+
+    <script>
+      const ENDING_THRESHOLD = 7;
+      const AFFECTION_MAX = 11;
+      const IMAGE_DIR = "assets/images/";
+      const BGM_PATH = "assets/audio/bgm.mp3";
+
+      const scenes = [
+        {
+          id: "s01",
+          speaker: "主人公",
+          text: "始業式の朝、昇降口でほどけた靴紐と格闘していたら、葵が何も言わずにしゃがみ込んだ。彼女の指先は驚くほど器用で、結び目を整え終えると『今年も同じクラスだね』と笑う。その一言だけで、まだ冷たい校舎の空気に春の匂いが混ざった気がした。",
+          bg: "school-morning"
+        },
+        {
+          id: "s02",
+          speaker: "葵",
+          text: "『またギリギリ登校。見てるこっちが焦るんだけど』と葵は笑ってから、ノートを胸に抱え直した。『放課後、進路ノートを一緒に見てくれない？ 書きたいことはあるのに、最後の一行だけどうしても決められなくて』",
+          bg: "classroom-day",
+          choices: [
+            {
+              text: "もちろん。迷うところまで含めて、最後まで一緒に考えよう",
+              affection: 2,
+              next: "s03",
+              reaction: "葵の肩から力が抜け、『助かった。君なら、ちゃんと聞いてくれると思った』と声が柔らかくなる。ノートを持つ手の強ばりが、目に見えてほどけていった。"
+            },
+            {
+              text: "予定が片づいたら行くよ。そのときは、ちゃんと話を聞かせて",
+              affection: 0,
+              next: "s03",
+              reaction: "葵は一瞬だけ視線を落とし、『そっか、来られたらでいいよ』と頷いた。笑ってはいるが、言葉を選ぶ間が少し長くなった。"
+            }
+          ]
+        },
+        {
+          id: "s03",
+          speaker: "主人公",
+          text: "昼休み、窓際で開いた葵の進路ノートは、将来の予定や目標で隙間なく埋まっていた。ただ『卒業までに言いたいこと』の欄だけが、雪みたいに白いまま残っている。書けないんじゃない。書いた瞬間に、何かが始まってしまうのを怖がっているんだと僕には見えた。",
+          bg: "classroom-day"
+        },
+        {
+          id: "s04",
+          speaker: "葵",
+          text: "『言葉にするのって、思ってるよりずっと怖いね』と葵は指でページの角をなぞった。『笑われるのが怖いんじゃなくて、軽く扱われるのが怖いの。大事にしてきた時間まで薄くなる気がして、いつも喉で止まっちゃう』",
+          bg: "library",
+          choices: [
+            {
+              text: "大事な言葉ほど、受け取るほうも軽くは扱わないよ",
+              affection: 2,
+              next: "s05",
+              reaction: "葵は指先を止め、ゆっくり息を吐いた。『…うん、相手を信じることも、言う側の覚悟だよね』と小さく笑う。その笑みは、さっきより少しだけ強かった。"
+            },
+            {
+              text: "少し肩の力を抜いてもいいんじゃないかな。言葉はきっと届くよ",
+              affection: -1,
+              next: "s05",
+              reaction: "『そっか、私が重くしすぎてるのかな』と葵は笑ったが、ページをめくる手は止まったままだった。軽く流そうとしても、彼女の中ではまだ重いままらしい。"
+            }
+          ]
+        },
+        {
+          id: "s05",
+          speaker: "主人公",
+          text: "放課後の商店街は文化祭前で騒がしく、袋を提げた生徒が行き交っていた。必要な買い物はもう終わっているのに、葵は同じメモを何度も確認する。たぶん確かめたいのは品目じゃない。まだ言葉にならない気持ちの順番なのだと、隣を歩く僕には分かった。",
+          bg: "shopping-street"
+        },
+        {
+          id: "s06",
+          speaker: "葵",
+          text: "『ねえ、もし私が失敗しても笑わないで』と葵はショーウィンドウに映る自分を見た。『文化祭の段取りとか、そういうのじゃなくて…もっと大事な失敗。冗談みたいに流されたら、たぶん平気なふりもできない』",
+          bg: "shopping-street",
+          choices: [
+            {
+              text: "笑わないよ。もし揺れたら、隣で支える",
+              affection: 1,
+              next: "s07",
+              reaction: "葵は驚いたように瞬きをして、『その言い方、ずるいな。逃げ道なくなる』と笑った。けれど次の瞬間には『ありがとう。じゃあ、ちゃんと向き合う』と頷く。"
+            },
+            {
+              text: "転んだら、そのときは一緒に笑って立ち上がろう",
+              affection: 0,
+              next: "s07",
+              reaction: "『うん、そうできたら楽だね』と葵は笑った。明るい返事のあと、胸の前で握った指先だけが、まだ小さく震えていた。"
+            }
+          ]
+        },
+        {
+          id: "s07",
+          speaker: "主人公",
+          text: "帰り道の川沿い、夕焼けが水面を銅色に染めるころ、葵は不意に足を止めた。自転車のベルだけが遠くで鳴って、僕らの間には沈黙だけが残る。彼女は制服の袖を握り、意を決したように僕を見上げた。",
+          bg: "river-evening"
+        },
+        {
+          id: "s08",
+          speaker: "葵",
+          text: "『最近、君といると時間が早すぎる』葵は川面から目を離さないまま言った。『笑ってるうちに一日が終わって、家に帰ると急に静かになる。卒業したら、こうして並んで歩くのも終わるのかなって考えると、胸の奥が冷たくなる』",
+          bg: "river-evening",
+          choices: [
+            {
+              text: "終わりにしなければいい。明日も、その先の季節も隣を歩こう",
+              affection: 2,
+              next: "s09",
+              reaction: "葵はゆっくり振り向き、夕焼けの中で目を細めた。『その言葉、ずっと欲しかった』と頬を赤らめる。張り詰めていた空気が、そこでようやくほどけた。"
+            },
+            {
+              text: "たしかに、こういう時間は驚くほど短いよね",
+              affection: -1,
+              next: "s09",
+              reaction: "『うん…短いね』と葵は笑い、視線を川面へ戻した。言葉は続いたが、互いの本音に手が届かない薄い膜が残った。"
+            }
+          ]
+        },
+        {
+          id: "s09",
+          speaker: "主人公",
+          text: "文化祭当日、屋上は紙飾りと風でざわついていた。突風にあおられて葵の進路ノートが宙を舞い、僕らは同時に駆け出して手すり際でつかみ取る。息を切らした葵は笑いながら、『危なかった、言えないまま飛んでいくところだった』と小さく呟いた。",
+          bg: "school-roof"
+        },
+        {
+          id: "s10",
+          speaker: "葵",
+          text: "『このページだけ、まだ空白なの』と葵はノートを開いた。『今日こそ埋めるって決めたのに、ペンを持つと手が止まる。ここを書いたら、もう知らないふりはできない。でも逃げたまま卒業するのは、もっと嫌なんだ』",
+          bg: "school-roof",
+          choices: [
+            {
+              text: "今ここで書こう。書き終わるまで、黙ってそばにいる",
+              affection: 1,
+              next: "s11",
+              reaction: "葵は深く息を吸い、空白の行にペン先を置いた。『見てて。今度こそ逃げない』。インクが走る音が、祭りのざわめきよりはっきり耳に届いた。"
+            },
+            {
+              text: "今日は無理しなくていい。言葉が整う日を待ってもいいんだ",
+              affection: 0,
+              next: "s11",
+              reaction: "『優しいね。でも、たぶん今じゃないと書けない』と葵は首を横に振る。震える手でノートを押さえ、何度も呼吸を整えてから文字を書き始めた。"
+            }
+          ]
+        },
+        {
+          id: "s11",
+          speaker: "主人公",
+          text: "夜の校庭にライトが灯り、祭りの歓声は風に混じって遠のいていく。最後の一文字を書き終えた葵は、ノートを胸に抱いたまま目を閉じた。僕は何も言わず、その沈黙が終わるのを待った。やがて彼女は、覚悟を置くようにペンを机へ戻した。",
+          bg: "festival-night"
+        },
+        {
+          id: "s12",
+          speaker: "葵",
+          text: "『書けた。やっと、自分で逃げないって決められた気がする』葵はノートを閉じ、まっすぐこちらを見た。『でも最後は文字じゃだめ。君の顔を見て、私の声で伝えたい。そうしないと、きっと何年経っても後悔する』",
+          bg: "festival-night",
+          choices: [
+            {
+              text: "うん。逃げないで聞くから、君の言葉で話して",
+              affection: 1,
+              next: "s13",
+              reaction: "葵は小さく頷き、胸の前で重ねた手をぎゅっと握った。逃げないと決めた顔で一歩近づき、視線をまっすぐ重ねてくる。"
+            },
+            {
+              text: "その前に、僕の気持ちを先に渡してもいいかな",
+              affection: 1,
+              next: "s13",
+              reaction: "葵は目を見開いたあと、静かに首を振った。『うれしい。でも、最後まで言わせて。ここで逃げたくないから』。震えた声の奥に、確かな強さが宿っていた。"
+            }
+          ]
+        },
+        {
+          id: "s13",
+          speaker: "葵",
+          text: "『ずっと前から、君が好きでした』葵の声は震えていたが、言葉は途切れなかった。『友達のままでも楽しかった。でも本当は、帰り道の隣も、次の季節の予定も、君と分け合いたかった。卒業しても、君の隣で同じ景色を見たいです』",
+          bg: "festival-night",
+          choices: [
+            {
+              text: "僕も同じ気持ちだ。これから先も、君と並んで歩きたい",
+              affection: 2,
+              next: "s14",
+              reaction: "返事を聞いた瞬間、葵の瞳に灯りが戻る。『よかった…ちゃんと届いた』。こぼれそうな涙をこらえながら、何度も小さく頷いた。"
+            },
+            {
+              text: "君を大切に思ってる。だからこそ、少しだけ答えを待ってほしい",
+              affection: -1,
+              next: "s14",
+              reaction: "葵は唇を結び、息を整えてから頷いた。『うん、待てる。言ってくれてありがとう』。寂しさを隠すように、それでもまっすぐ笑ってみせた。"
+            }
+          ]
+        },
+        {
+          id: "s14",
+          speaker: "主人公",
+          text: "告白のあと、葵は泣きそうな顔のまま笑った。風に乱れた髪を耳へかける指先は震えていたけれど、その目にはもう迷いがない。言えなかった言葉の結び目がほどけた今、夜風の冷たさより、交わした声の温度だけが僕の中にはっきり残っていた。",
+          bg: "festival-night"
+        }
+      ];
+
+      const endingScenes = {
+        true: {
+          id: "s01",
+          speaker: "TRUE END",
+          text: "春。通学路の桜がほどける音を聞きながら、葵は君の隣で笑う。『あの日、怖かったけど言ってよかった。受け止めてもらえたから、未来をこわがらずに見られるようになった』。重ねた手の温度は、季節が変わっても離れない約束になった。",
+          bg: "school-morning"
+        },
+        normal: {
+          id: "s07",
+          speaker: "NORMAL END",
+          text: "卒業前の夕暮れ、葵は少しだけ目を潤ませて、それでも笑った。『急がなくていい。君の言葉で返事をくれたら、それで十分』。君はその言葉を胸に受け取り、次に会う日には逃げずに応えられるよう、まだ青い答えを静かに育てていく。",
+          bg: "river-evening"
+        }
+      };
+
+      const state = {
+        index: 0,
+        affection: 0,
+        ended: false,
+        pendingReaction: null,
+        pendingNextId: null,
+        bgmEnabled: true,
+        bgmStarted: false
+      };
+
+      const el = {
+        app: document.getElementById("app"),
+        bgImg: document.getElementById("bg-img"),
+        speaker: document.getElementById("speaker"),
+        text: document.getElementById("text"),
+        choices: document.getElementById("choices"),
+        affectionBar: document.getElementById("affection-bar"),
+        bgmToggle: document.getElementById("bgm-toggle"),
+        musicOn: document.getElementById("music-on"),
+        musicOff: document.getElementById("music-off")
+      };
+
+      // BGM設定
+      const bgmAudio = new Audio(BGM_PATH);
+      bgmAudio.loop = true;
+
+      // タイプライターとスキップ用の変数
+      let typingTimer = null;
+      let isTyping = false;
+      let currentFullText = "";
+      
+      // テキスト末尾の▼アイコン
+      const caretEl = document.createElement("span");
+      caretEl.className = "text-caret";
+      caretEl.innerHTML = "▼";
+
+      function updateAffectionUI() {
+        const segments = 6;
+        const activeCount = Math.min(segments, Math.floor((state.affection / AFFECTION_MAX) * segments) + 1);
+        el.affectionBar.innerHTML = "";
+        for (let i = 0; i < segments; i++) {
+          const div = document.createElement("div");
+          div.className = `bar-segment ${i < activeCount ? 'active' : ''}`;
+          el.affectionBar.appendChild(div);
+        }
+      }
+
+      function finishTyping(element) {
+        if (typingTimer) {
+          clearInterval(typingTimer);
+          typingTimer = null;
+        }
+        element.textContent = currentFullText;
+        isTyping = false;
+        
+        // 選択肢がない場合のみ、次へ進めるマークを表示
+        const scene = scenes[state.index];
+        const hasChoices = scene && scene.choices && !state.pendingReaction;
+        if (!hasChoices && !state.ended) {
+          element.appendChild(caretEl);
+        }
+      }
+
+      function typeWriter(text, element, speed = 25) { // 少し早くした
+        if (typingTimer) clearInterval(typingTimer);
+        element.textContent = "";
+        currentFullText = text;
+        isTyping = true;
+        
+        let i = 0;
+        typingTimer = setInterval(() => {
+          if (i < text.length) {
+            element.textContent += text.charAt(i);
+            i++;
+          } else {
+            finishTyping(element);
+          }
+        }, speed);
+      }
+
+      function render() {
+        if (state.index >= scenes.length) {
+          const endingKey = state.affection >= ENDING_THRESHOLD ? "true" : "normal";
+          const end = endingScenes[endingKey];
+          el.speaker.textContent = end.speaker;
+          typeWriter(end.text, el.text);
+          el.bgImg.style.backgroundImage = `url('${IMAGE_DIR}${end.id}.jpg')`;
+          el.choices.innerHTML = "";
+          state.ended = true;
+          return;
+        }
+
+        if (state.pendingReaction) {
+          el.speaker.textContent = state.pendingReaction.speaker;
+          typeWriter(state.pendingReaction.text, el.text);
+          el.choices.innerHTML = "";
+          return;
+        }
+
+        const scene = scenes[state.index];
+        el.bgImg.style.backgroundImage = `url('${IMAGE_DIR}${scene.id}.jpg')`;
+        el.speaker.textContent = scene.speaker;
+        typeWriter(scene.text, el.text);
+        updateAffectionUI();
+
+        if (scene.choices) {
+          el.choices.innerHTML = "";
+          scene.choices.forEach(c => {
+            const btn = document.createElement("button");
+            btn.className = "choice-btn";
+            btn.textContent = c.text;
+            btn.onclick = (e) => {
+              e.stopPropagation(); // 画面タップイベントを防止
+              handleUserInteraction();
+              state.affection += c.affection;
+              state.pendingReaction = { speaker: "地の文", text: c.reaction };
+              state.pendingNextId = c.next;
+              render();
+            };
+            el.choices.appendChild(btn);
+          });
+        } else {
+          el.choices.innerHTML = "";
+        }
+      }
+
+      function handleUserInteraction() {
+        if (state.bgmEnabled && !state.bgmStarted) {
+          bgmAudio.play().catch(() => {});
+          state.bgmStarted = true;
+          el.musicOn.classList.remove("hidden");
+          el.musicOff.classList.add("hidden");
+        }
+      }
+
+      function handleAdvance() {
+        if (state.ended) return;
+
+        // タイプ中ならスキップして全表示
+        if (isTyping) {
+          finishTyping(el.text);
+          return;
+        }
+
+        // 選択肢待ちの場合は画面タップで進めない
+        if (scenes[state.index]?.choices && !state.pendingReaction) return;
+
+        if (state.pendingReaction) {
+          state.pendingReaction = null;
+          state.index++;
+          render();
+        } else {
+          state.index++;
+          render();
+        }
+      }
+
+      // 画面全体のタップ処理
+      el.app.addEventListener("click", (e) => {
+        // BGMボタンが押された場合は何もしない
+        if (e.target.closest('#bgm-toggle')) return;
+        
+        handleUserInteraction();
+        handleAdvance();
+      });
+
+      // BGMトグルの処理
+      el.bgmToggle.onclick = (e) => {
+        e.stopPropagation();
+        state.bgmEnabled = !state.bgmEnabled;
+        if (state.bgmEnabled) {
+          bgmAudio.play().catch(() => {});
+          state.bgmStarted = true;
+        } else {
+          bgmAudio.pause();
+        }
+        el.musicOn.classList.toggle("hidden", !state.bgmEnabled);
+        el.musicOff.classList.toggle("hidden", state.bgmEnabled);
+      };
+
+      // 初期起動
+      window.onload = () => {
+        render();
+        document.getElementById("stage").classList.add("active");
+      };
+    </script>
+  </body>
+</html>

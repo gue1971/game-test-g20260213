@@ -1,0 +1,100 @@
+[
+  {
+    "id": "s01",
+    "outPath": "assets/images/s01.jpg",
+    "mime": "image/jpeg",
+    "attempts": 2,
+    "score": 95
+  },
+  {
+    "id": "s02",
+    "outPath": "assets/images/s02.jpg",
+    "mime": "image/jpeg",
+    "attempts": 1,
+    "score": 95
+  },
+  {
+    "id": "s03",
+    "outPath": "assets/images/s03.jpg",
+    "mime": "image/jpeg",
+    "attempts": 6,
+    "score": 95
+  },
+  {
+    "id": "s04",
+    "outPath": "assets/images/s04.jpg",
+    "mime": "image/jpeg",
+    "attempts": 3,
+    "score": 95
+  },
+  {
+    "id": "s05",
+    "outPath": "assets/images/s05.jpg",
+    "mime": "image/jpeg",
+    "attempts": 2,
+    "score": 95
+  },
+  {
+    "id": "s06",
+    "outPath": "assets/images/s06.jpg",
+    "mime": "image/jpeg",
+    "attempts": 2,
+    "score": 95
+  },
+  {
+    "id": "s07",
+    "outPath": "assets/images/s07.jpg",
+    "mime": "image/jpeg",
+    "attempts": 5,
+    "score": 95
+  },
+  {
+    "id": "s08",
+    "outPath": "assets/images/s08.jpg",
+    "mime": "image/jpeg",
+    "attempts": 1,
+    "score": 95
+  },
+  {
+    "id": "s09",
+    "outPath": "assets/images/s09.jpg",
+    "mime": "image/jpeg",
+    "attempts": 3,
+    "score": 95
+  },
+  {
+    "id": "s10",
+    "outPath": "assets/images/s10.jpg",
+    "mime": "image/jpeg",
+    "attempts": 1,
+    "score": 95
+  },
+  {
+    "id": "s11",
+    "outPath": "assets/images/s11.jpg",
+    "mime": "image/jpeg",
+    "attempts": 1,
+    "score": 95
+  },
+  {
+    "id": "s12",
+    "outPath": "assets/images/s12.jpg",
+    "mime": "image/jpeg",
+    "attempts": 2,
+    "score": 95
+  },
+  {
+    "id": "s13",
+    "outPath": "assets/images/s13.jpg",
+    "mime": "image/jpeg",
+    "attempts": 3,
+    "score": 95
+  },
+  {
+    "id": "s14",
+    "outPath": "assets/images/s14.jpg",
+    "mime": "image/jpeg",
+    "attempts": 2,
+    "score": 95
+  }
+]
