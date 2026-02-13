@@ -172,11 +172,11 @@
         position: absolute;
         left: 20px;
         right: 20px;
-        top: 16px;
-        bottom: 16px;
+        top: 12px;
+        bottom: 12px;
         display: flex;
         flex-direction: column;
-        gap: 12px;
+        gap: 10px;
         z-index: 30;
         overflow-y: auto;
         overscroll-behavior: contain;
@@ -218,10 +218,11 @@
         background: rgba(0, 0, 0, 0.22);
         backdrop-filter: blur(12px);
         border: 1px solid rgba(255, 255, 255, 0.24);
-        padding: 16px 20px;
+        padding: 12px 16px;
         border-radius: 14px;
         text-align: left;
-        font-size: 0.95rem;
+        font-size: 0.92rem;
+        line-height: 1.45;
         color: #fff;
         box-shadow: 0 8px 24px rgba(0,0,0,0.2);
         transition: all 0.2s ease;
@@ -273,6 +274,7 @@
       const ENDING_THRESHOLD = 7;
       const IMAGE_ASPECT_RATIO = 1080 / 719;
       const MIN_TEXT_HEIGHT = 160;
+      const MIN_TEXT_HEIGHT_CHOICES = 228;
       const TEXT_PAGE_CHARS_MOBILE = 56;
       const TEXT_PAGE_CHARS_DEFAULT = 72;
       const IMAGE_DIR = "assets/images/";
@@ -674,7 +676,8 @@
         const appWidth = el.app.clientWidth;
         const appHeight = el.app.clientHeight;
         const idealImageHeight = appWidth * IMAGE_ASPECT_RATIO;
-        const maxImageHeight = Math.max(0, appHeight - MIN_TEXT_HEIGHT);
+        const textMinHeight = state.choiceMenuOpen ? MIN_TEXT_HEIGHT_CHOICES : MIN_TEXT_HEIGHT;
+        const maxImageHeight = Math.max(0, appHeight - textMinHeight);
         const stageHeight = Math.max(0, Math.min(idealImageHeight, maxImageHeight));
         el.stage.style.height = `${stageHeight}px`;
       }
@@ -693,6 +696,7 @@
       }
 
       function render() {
+        updateStageLayout();
         if (state.index >= scenes.length) {
           const endingKey = state.affection >= ENDING_THRESHOLD ? "true" : "normal";
           const end = endingScenes[endingKey];
