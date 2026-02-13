@@ -60,8 +60,22 @@
         background-size: contain;
         background-position: top center;
         background-repeat: no-repeat;
-        transition: transform 10s linear;
+        opacity: 0;
+        transition: opacity 0.7s ease, transform 10s linear;
         background-color: #111;
+        will-change: opacity, transform;
+        backface-visibility: hidden;
+        transform: translateZ(0);
+      }
+
+      .stage-bg.visible {
+        opacity: 1;
+      }
+
+      @media (max-width: 768px) {
+        .stage-bg {
+          transition: opacity 0.9s ease, transform 12s linear;
+        }
       }
 
       /* 背景に微妙なズームアニメーション */
@@ -232,7 +246,8 @@
       
       <!-- ステージエリア（画像表示・選択肢） -->
       <section class="stage" id="stage">
-        <div id="bg-img" class="stage-bg"></div>
+        <div id="bg-img-a" class="stage-bg visible"></div>
+        <div id="bg-img-b" class="stage-bg"></div>
         
         <!-- BGMトグル（画像欄の右下） -->
         <button id="bgm-toggle" class="bgm-btn" title="BGM">
@@ -482,7 +497,8 @@
       const el = {
         app: document.getElementById("app"),
         stage: document.getElementById("stage"),
-        bgImg: document.getElementById("bg-img"),
+        bgImgA: document.getElementById("bg-img-a"),
+        bgImgB: document.getElementById("bg-img-b"),
         text: document.getElementById("text"),
         choices: document.getElementById("choices"),
         bgmToggle: document.getElementById("bgm-toggle"),
@@ -499,6 +515,13 @@
       let typingTimer = null;
       let isTyping = false;
       let currentFullText = "";
+      let bgRequestId = 0;
+
+      const bgState = {
+        activeLayer: 0,
+        currentUrl: null
+      };
+      const bgImageCache = new Map();
       
       // テキスト末尾の▼アイコン
       const caretEl = document.createElement("span");
@@ -544,6 +567,50 @@
             finishTyping(element);
           }
         }, speed);
+      }
+
+      function preloadBackground(url) {
+        if (bgImageCache.has(url)) return bgImageCache.get(url);
+        const loading = new Promise((resolve) => {
+          const img = new Image();
+          img.onload = async () => {
+            try {
+              if (typeof img.decode === "function") {
+                await img.decode();
+              }
+            } catch (_) {
+              // decode非対応・失敗時はそのまま続行
+            }
+            resolve(true);
+          };
+          img.onerror = () => resolve(false);
+          img.src = url;
+        });
+        bgImageCache.set(url, loading);
+        return loading;
+      }
+
+      async function setStageBackground(url) {
+        if (bgState.currentUrl === url) return;
+        const requestId = ++bgRequestId;
+        await preloadBackground(url);
+        if (requestId !== bgRequestId) return;
+
+        const nextLayer = bgState.activeLayer === 0 ? 1 : 0;
+        const incoming = nextLayer === 0 ? el.bgImgA : el.bgImgB;
+        const outgoing = nextLayer === 0 ? el.bgImgB : el.bgImgA;
+        incoming.style.backgroundImage = `url('${url}')`;
+        incoming.classList.add("visible");
+        outgoing.classList.remove("visible");
+        bgState.activeLayer = nextLayer;
+        bgState.currentUrl = url;
+      }
+
+      function warmupUpcomingBackgrounds() {
+        const nextScene = scenes[state.index + 1];
+        const nextNextScene = scenes[state.index + 2];
+        if (nextScene) preloadBackground(`${IMAGE_DIR}${nextScene.id}.jpeg`);
+        if (nextNextScene) preloadBackground(`${IMAGE_DIR}${nextNextScene.id}.jpeg`);
       }
 
       function getPageCharLimit() {
@@ -630,7 +697,7 @@
           const endingKey = state.affection >= ENDING_THRESHOLD ? "true" : "normal";
           const end = endingScenes[endingKey];
           setPagedText(`ending:${endingKey}`, end.text);
-          el.bgImg.style.backgroundImage = `url('${IMAGE_DIR}${end.id}.jpeg')`;
+          setStageBackground(`${IMAGE_DIR}${end.id}.jpeg`);
           el.choices.innerHTML = "";
           el.text.classList.remove("with-choices");
           el.text.classList.remove("choices-only");
@@ -649,7 +716,8 @@
         }
 
         const scene = scenes[state.index];
-        el.bgImg.style.backgroundImage = `url('${IMAGE_DIR}${scene.id}.jpeg')`;
+        setStageBackground(`${IMAGE_DIR}${scene.id}.jpeg`);
+        warmupUpcomingBackgrounds();
 
         if (scene.choices) {
           el.choices.innerHTML = "";
@@ -761,8 +829,12 @@
       };
 
       // 初期起動
-      window.onload = () => {
+      window.onload = async () => {
         updateStageLayout();
+        const firstUrl = `${IMAGE_DIR}${scenes[0].id}.jpeg`;
+        await preloadBackground(firstUrl);
+        el.bgImgA.style.backgroundImage = `url('${firstUrl}')`;
+        bgState.currentUrl = firstUrl;
         render();
         el.stage.classList.add("active");
       };
