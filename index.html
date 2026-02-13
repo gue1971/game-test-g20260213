@@ -113,11 +113,7 @@
         flex: 1;
         min-width: 0;
         padding: 16px 14px;
-        background:
-          linear-gradient(110deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0.06) 28%, rgba(255, 255, 255, 0.02) 52%, rgba(255, 255, 255, 0) 72%),
-          linear-gradient(145deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.03)),
-          rgba(12, 12, 16, 0.5);
-        background-attachment: local, local, local;
+        background: rgba(12, 12, 16, 0.5);
         border: 1px solid rgba(255, 255, 255, 0.28);
         border-radius: 12px;
         backdrop-filter: blur(14px) saturate(140%);
@@ -127,6 +123,19 @@
           inset 0 -1px 0 rgba(255, 255, 255, 0.08),
           0 12px 28px rgba(0, 0, 0, 0.22);
         overflow-y: auto; /* 万が一溢れたらスクロール可能に */
+      }
+
+      .text-content.with-choices {
+        padding-bottom: 132px;
+      }
+
+      .text-content.choices-only {
+        padding: 0;
+        border-color: transparent;
+        background: transparent;
+        box-shadow: none;
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
       }
 
       /* タップを促すアイコン（テキスト末尾） */
@@ -144,14 +153,49 @@
         50% { opacity: 1; }
       }
 
-      /* 選択肢（画像の上に表示されるように） */
+      /* 選択肢（テキスト領域の上に表示） */
       .choices-container {
-        position: relative;
-        padding: 0 76px 16px 20px;
+        position: absolute;
+        left: 20px;
+        right: 20px;
+        bottom: 16px;
         display: flex;
         flex-direction: column;
         gap: 12px;
-        z-index: 100;
+        z-index: 30;
+      }
+
+      .choice-actions {
+        display: flex;
+        justify-content: center;
+        margin-top: 2px;
+      }
+
+      .choice-return-btn {
+        width: 44px;
+        height: 30px;
+        border-radius: 9999px;
+        border: 1px solid rgba(255, 255, 255, 0.35);
+        background:
+          linear-gradient(145deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.04)),
+          rgba(0, 0, 0, 0.28);
+        color: #fff;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        box-shadow:
+          inset 0 1px 0 rgba(255, 255, 255, 0.28),
+          0 6px 16px rgba(0, 0, 0, 0.22);
+        transition: transform 0.18s ease, background 0.18s ease;
+      }
+
+      .choice-return-btn:active {
+        transform: scale(0.97);
+        background:
+          linear-gradient(145deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.06)),
+          rgba(0, 0, 0, 0.34);
       }
 
       .choice-btn {
@@ -193,14 +237,12 @@
           <svg id="music-on" class="w-5 h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"></path></svg>
           <svg id="music-off" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"></path></svg>
         </button>
-
-        <!-- 選択肢（画像領域の下部に表示） -->
-        <div class="choices-container" id="choices"></div>
       </section>
 
       <!-- テキストエリア -->
       <section class="novel-box">
         <div class="text-content" id="text"></div>
+        <div class="choices-container" id="choices"></div>
       </section>
     </main>
 
@@ -417,6 +459,7 @@
         ended: false,
         pendingReaction: null,
         pendingNextId: null,
+        choiceMenuOpen: false,
         bgmEnabled: true,
         bgmStarted: false
       };
@@ -446,6 +489,10 @@
       caretEl.className = "text-caret";
       caretEl.innerHTML = "▼";
 
+      const choiceToggleEl = document.createElement("span");
+      choiceToggleEl.className = "text-caret";
+      choiceToggleEl.innerHTML = "▼";
+
       function finishTyping(element) {
         if (typingTimer) {
           clearInterval(typingTimer);
@@ -457,7 +504,9 @@
         // 選択肢がない場合のみ、次へ進めるマークを表示
         const scene = scenes[state.index];
         const hasChoices = scene && scene.choices && !state.pendingReaction;
-        if (!hasChoices && !state.ended) {
+        if (hasChoices && !state.choiceMenuOpen) {
+          element.appendChild(choiceToggleEl);
+        } else if (!hasChoices && !state.ended) {
           element.appendChild(caretEl);
         }
       }
@@ -488,6 +537,19 @@
         el.stage.style.height = `${stageHeight}px`;
       }
 
+      function findSceneIndexById(sceneId) {
+        return scenes.findIndex((scene) => scene.id === sceneId);
+      }
+
+      function commitPendingChoice() {
+        if (!state.pendingReaction) return;
+        const nextIndex = state.pendingNextId ? findSceneIndexById(state.pendingNextId) : -1;
+        state.pendingReaction = null;
+        state.pendingNextId = null;
+        state.choiceMenuOpen = false;
+        state.index = nextIndex >= 0 ? nextIndex : state.index + 1;
+      }
+
       function render() {
         if (state.index >= scenes.length) {
           const endingKey = state.affection >= ENDING_THRESHOLD ? "true" : "normal";
@@ -495,6 +557,8 @@
           typeWriter(end.text, el.text);
           el.bgImg.style.backgroundImage = `url('${IMAGE_DIR}${end.id}.jpeg')`;
           el.choices.innerHTML = "";
+          el.text.classList.remove("with-choices");
+          el.text.classList.remove("choices-only");
           state.ended = true;
           return;
         }
@@ -502,31 +566,68 @@
         if (state.pendingReaction) {
           typeWriter(state.pendingReaction.text, el.text);
           el.choices.innerHTML = "";
+          el.text.classList.remove("with-choices");
+          el.text.classList.remove("choices-only");
           return;
         }
 
         const scene = scenes[state.index];
         el.bgImg.style.backgroundImage = `url('${IMAGE_DIR}${scene.id}.jpeg')`;
-        typeWriter(scene.text, el.text);
 
         if (scene.choices) {
           el.choices.innerHTML = "";
-          scene.choices.forEach(c => {
-            const btn = document.createElement("button");
-            btn.className = "choice-btn";
-            btn.textContent = c.text;
-            btn.onclick = (e) => {
-              e.stopPropagation(); // 画面タップイベントを防止
-              handleUserInteraction();
-              state.affection += c.affection;
-              state.pendingReaction = { text: c.reaction };
-              state.pendingNextId = c.next;
+          if (state.choiceMenuOpen) {
+            if (typingTimer) {
+              clearInterval(typingTimer);
+              typingTimer = null;
+            }
+            isTyping = false;
+            el.text.textContent = "";
+            el.text.classList.add("choices-only");
+
+            scene.choices.forEach(c => {
+              const btn = document.createElement("button");
+              btn.className = "choice-btn";
+              btn.textContent = c.text;
+              btn.onclick = (e) => {
+                e.stopPropagation(); // 画面タップイベントを防止
+                handleUserInteraction();
+                state.affection += c.affection;
+                state.pendingReaction = { text: c.reaction };
+                state.pendingNextId = c.next;
+                render();
+              };
+              el.choices.appendChild(btn);
+            });
+
+            const actions = document.createElement("div");
+            actions.className = "choice-actions";
+            const returnBtn = document.createElement("button");
+            returnBtn.type = "button";
+            returnBtn.className = "choice-return-btn";
+            returnBtn.title = "本文に戻る";
+            returnBtn.innerHTML = `
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M9 7L4 12L9 17" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>
+                <path d="M4 12H14C17.314 12 20 14.686 20 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>
+              </svg>
+            `;
+            returnBtn.onclick = (e) => {
+              e.stopPropagation();
+              state.choiceMenuOpen = false;
               render();
             };
-            el.choices.appendChild(btn);
-          });
+            actions.appendChild(returnBtn);
+            el.choices.appendChild(actions);
+          } else {
+            el.text.classList.remove("choices-only");
+            typeWriter(scene.text, el.text);
+          }
         } else {
+          el.text.classList.remove("with-choices");
+          el.text.classList.remove("choices-only");
           el.choices.innerHTML = "";
+          typeWriter(scene.text, el.text);
         }
       }
 
@@ -548,12 +649,15 @@
           return;
         }
 
-        // 選択肢待ちの場合は画面タップで進めない
-        if (scenes[state.index]?.choices && !state.pendingReaction) return;
+        // 選択肢シーンは、通常進行と同じタップで選択肢表示へ進む
+        if (scenes[state.index]?.choices && !state.pendingReaction) {
+          state.choiceMenuOpen = true;
+          render();
+          return;
+        }
 
         if (state.pendingReaction) {
-          state.pendingReaction = null;
-          state.index++;
+          commitPendingChoice();
           render();
         } else {
           state.index++;
